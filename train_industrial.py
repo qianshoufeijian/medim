@@ -137,17 +137,35 @@ def main():
     print("✓ 所有组件初始化成功！")
     print("="*60)
     
-    print("\n提示:")
-    print("  - 完整训练请取消注释下面的训练代码")
-    print("  - 当前脚本仅验证代码可执行性")
-    
-    # 取消下面注释以开始训练
-    # print(f"\n开始训练...")
-    # from accelerate import Accelerator
-    # accelerator = Accelerator(mixed_precision=config.trainer.precision)
-    # model.set_accelerator(accelerator, None)
-    # model.init_dataloader(train_loader, val_loader)
-    # model.train()
+    # 开始训练
+    print(f"\n开始训练...")
+    from accelerate import Accelerator
+    accelerator = Accelerator(mixed_precision=config.trainer.precision)
+    model.set_accelerator(accelerator, None)
+    model.init_dataloader(train_loader, val_loader)
+    model.train()
+
+    # 训练完成后保存模型
+    save_dir = Path(config.checkpoint.save_dir)
+    save_dir.mkdir(parents=True, exist_ok=True)
+
+    best_model_path = save_dir / config.checkpoint.best_model_name
+    torch.save(
+        {
+            'model_state_dict': model.backbone.state_dict(),
+            'config': dict(config),
+        },
+        best_model_path
+    )
+    print(f"\n✓ 模型已保存到: {best_model_path}")
+
+    # 保存 signal tokenizer
+    signal_tok_save_dir = config.checkpoint.get('signal_tokenizer_path', str(save_dir / 'signal_tokenizer'))
+    signal_tokenizer.save_pretrained(signal_tok_save_dir)
+    print(f"✓ Signal Tokenizer 已保存到: {signal_tok_save_dir}")
+
+    print(f"\n下一步:")
+    print(f"  运行数据生成: python generate_data.py --config configs/generation_config.yaml --checkpoint {best_model_path}")
 
 if __name__ == "__main__":
     try:
